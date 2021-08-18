@@ -9,6 +9,8 @@ tests/data/*
 !tests/data/test.ome.tif
 ./notebooks/
 docs/notebooks/data/
+__pycache__/
+.snakemake/
 
 # Compiled javascript
 vitessce/static/

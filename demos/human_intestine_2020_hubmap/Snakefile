@@ -1,0 +1,68 @@
+from pathlib import Path
+
+# Directory / file constants
+SRC_DIR = Path("src")
+DATA_DIR = Path("data")
+RAW_DIR = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+
+# Rules
+rule all:
+    input:
+        (PROCESSED_DIR / "human_intestine_2020_hubmap.genomic-profiles.zarr"),
+        (PROCESSED_DIR / "human_intestine_2020_hubmap.cells.json"),
+        (PROCESSED_DIR / "human_intestine_2020_hubmap.cell-sets.json")
+
+rule convert_files:
+    input:
+        mtx=(RAW_DIR / "filtered_cell_by_bin.mtx"),
+        barcodes=(RAW_DIR / "barcodes.txt"),
+        bins=(RAW_DIR / "bins.txt"),
+        annotations=(RAW_DIR / "umap_coords_clusters.csv"),
+    output:
+        genomic_profiles=directory(PROCESSED_DIR / "human_intestine_2020_hubmap.genomic-profiles.zarr"),
+        cells=(PROCESSED_DIR / "human_intestine_2020_hubmap.cells.json"),
+        cell_sets=(PROCESSED_DIR / "human_intestine_2020_hubmap.cell-sets.json")
+    params:
+        script=(SRC_DIR / "convert_files.py")
+    shell:
+        '''
+        python {params.script} \
+            -im {input.mtx} \
+            -iba {input.barcodes} \
+            -ibi {input.bins} \
+            -ia {input.annotations} \
+            -ogp {output.genomic_profiles} \
+            -oc {output.cells} \
+            -ocs {output.cell_sets} \
+        '''
+
+rule curl_download:
+  shell:
+    '''
+    curl -L -o {output} "{params.file_url}"
+    '''
+
+use rule curl_download as download_mtx with:
+  output:
+    (RAW_DIR / "filtered_cell_by_bin.mtx")
+  params:
+    file_url="https://assets.hubmapconsortium.org/210d118a14c8624b6bb9610a9062656e/filtered_cell_by_bin.mtx"
+
+use rule curl_download as download_barcodes with:
+  output:
+    (RAW_DIR / "barcodes.txt")
+  params:
+    file_url="https://assets.hubmapconsortium.org/210d118a14c8624b6bb9610a9062656e/barcodes.txt"
+
+use rule curl_download as download_bins with:
+  output:
+    (RAW_DIR / "bins.txt")
+  params:
+    file_url="https://assets.hubmapconsortium.org/210d118a14c8624b6bb9610a9062656e/bins.txt"
+
+use rule curl_download as download_annotations with:
+  output:
+    (RAW_DIR / "umap_coords_clusters.csv")
+  params:
+    file_url="https://assets.hubmapconsortium.org/210d118a14c8624b6bb9610a9062656e/umap_coords_clusters.csv"

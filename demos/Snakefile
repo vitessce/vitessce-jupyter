@@ -1,0 +1,46 @@
+from pathlib import Path, PosixPath
+from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+
+S3 = S3RemoteProvider()
+
+BUCKET_VERSION = "0.0.32"
+BUCKET_NAME = "vitessce-data"
+BUCKET = PosixPath(BUCKET_NAME) / BUCKET_VERSION / "master_release"
+
+DATA_DIR = Path("data")
+PROCESSED_DIR = DATA_DIR / "processed"
+
+subworkflow habib_2017:
+    workdir:
+        "habib_2017_nature_methods"
+    snakefile:
+        "habib_2017_nature_methods/Snakefile"
+
+subworkflow human_intestine_2020:
+    workdir:
+        "human_intestine_2020_hubmap"
+    snakefile:
+        "human_intestine_2020_hubmap/Snakefile"
+
+subworkflow human_lymph_node_10x:
+    workdir:
+        "human_lymph_node_10x_visium"
+    snakefile:
+        "human_lymph_node_10x_visium/Snakefile"
+
+rule all:
+    input:
+        habib_2017=habib_2017(str(PROCESSED_DIR / "habib_2017.h5ad.zarr")),
+        human_intestine_2020=human_intestine_2020(str(PROCESSED_DIR / "human_intestine_2020_hubmap.genomic-profiles.zarr")),
+        human_lymph_node_10x=human_lymph_node_10x(str(PROCESSED_DIR / "human_lymph_node_10x.h5ad.zarr")),
+    params:
+        # This should be in output: https://github.com/snakemake/snakemake/issues/870
+        habib_2017=S3.remote(str(BUCKET / "habib_2017" / "habib_2017.h5ad.zarr")),
+        human_intestine_2020=S3.remote(str(BUCKET / "human_intestine_2020_hubmap")),
+        human_lymph_node_10x=S3.remote(str(BUCKET / "human_lymph_node_10x" / "human_lymph_node_10x.h5ad.zarr")),
+    shell:
+        """
+        aws s3 cp --recursive {input.habib_2017} s3://{params.habib_2017} && \
+        aws s3 cp --recursive $(dirname {input.human_intestine_2020}) s3://{params.human_intestine_2020} && \
+        aws s3 cp --recursive {input.human_lymph_node_10x} s3://{params.human_lymph_node_10x}
+        """

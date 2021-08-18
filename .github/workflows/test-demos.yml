@@ -1,4 +1,4 @@
-name: Test
+name: Test the demo data processing scripts
 
 on: [push, pull_request]
 
@@ -16,8 +16,8 @@ jobs:
           node-version: 14
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          activate-environment: vitessce-jupyter-dev
-          environment-file: environment.yml
+          activate-environment: vitessce-python-demos
+          environment-file: demos/environment.yml
           python-version: 3.8
           auto-activate-base: false
       - run: |
@@ -25,9 +25,6 @@ jobs:
           conda list
       - name: Install vitessce
         run: pip install -e .
-      - name: Run unittests
+      - name: Run tests
         working-directory: ./tests
         run: python -m unittest
-      - name: Run doctests
-        working-directory: ./vitessce
-        run: pytest --doctest-modules

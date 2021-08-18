@@ -1,0 +1,26 @@
+from pathlib import Path
+
+# Directory / file constants
+SRC_DIR = Path("src")
+DATA_DIR = Path("data")
+RAW_DIR = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+
+# Rules
+rule all:
+    input:
+        (PROCESSED_DIR / "human_lymph_node_10x.h5ad.zarr"),
+        #(PROCESSED_DIR / "human_lymph_node_10x.ome.zarr"),
+
+# Convert the raw AnnData .h5ad file to a processed AnnData .zarr store.
+rule create_zarr:
+    output:
+        directory(PROCESSED_DIR / "human_lymph_node_10x.h5ad.zarr")
+    params:
+        script=(SRC_DIR / "create_zarr.py")
+    shell:
+        '''
+        python {params.script} \
+            -o {output}
+        '''
+

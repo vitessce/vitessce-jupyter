@@ -1,0 +1,41 @@
+from pathlib import Path
+
+# Directory / file constants
+SRC_DIR = Path("src")
+DATA_DIR = Path("data")
+RAW_DIR = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+
+# URL constants
+H5AD_URL = "https://covid19.cog.sanger.ac.uk/habib17.processed.h5ad"
+
+# Rules
+rule all:
+    input: (PROCESSED_DIR / "habib_2017.h5ad.zarr")
+
+# Convert the raw AnnData .h5ad file to a processed AnnData .zarr store.
+rule convert_h5ad_to_zarr:
+    input:
+        (RAW_DIR / "habib17.processed.h5ad")
+    output:
+        directory(PROCESSED_DIR / "habib_2017.h5ad.zarr")
+    params:
+        script=(SRC_DIR / "convert_h5ad_to_zarr.py")
+    shell:
+        '''
+        python {params.script} \
+            -i {input} \
+            -o {output}
+        '''
+
+# Download AnnData .h5ad file containing single-cell data.
+rule download_data:
+    output:
+        (RAW_DIR / "habib17.processed.h5ad")
+    params:
+        file_url=H5AD_URL
+    shell:
+        '''
+        curl -L -o {output} {params.file_url}
+        '''
+
