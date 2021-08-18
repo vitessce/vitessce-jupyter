@@ -39,11 +39,6 @@ class AbstractWrapper:
     """
     An abstract class that can be extended when
     implementing custom dataset object wrapper classes. 
-
-    TODO: Add some useful tests.
-
-    >>> assert True
-
     """
 
     def __init__(self, **kwargs):
@@ -56,6 +51,9 @@ class AbstractWrapper:
         self.routes = []
         self.is_remote = False
         self.file_def_creators = []
+
+    def __repr__(self):
+        return self._repr
 
     def convert_and_save(self, dataset_uid, obj_i):
         """
@@ -132,6 +130,27 @@ class AbstractWrapper:
         """
         raise NotImplementedError("Auto view configuration has not yet been implemented for this data object wrapper class.")
 
+
+def _make_repr(init_locals):
+    '''
+    >>> orig = MultiImageWrapper('IMAGE_WRAPPERS', foo='bar')
+    >>> orig_repr = repr(orig)
+    >>> print(orig_repr)
+    MultiImageWrapper(image_wrappers='IMAGE_WRAPPERS', use_physical_size_scaling=False, foo='bar')
+    >>> evalled = eval(orig_repr)
+    >>> assert orig_repr == repr(evalled)
+    '''
+    del init_locals['self']
+    clazz = init_locals.pop('__class__')  # Requires superclass to be initialized.
+    kwargs = init_locals.pop('kwargs')
+    args = {
+        **init_locals,
+        **kwargs
+    }
+    params = ', '.join([f'{k}={repr(v)}' for k, v in args.items()])
+    return f'{clazz.__name__}({params})'
+
+
 class MultiImageWrapper(AbstractWrapper):
     """
     Wrap multiple imaging datasets by creating an instance of the ``MultiImageWrapper`` class.
@@ -141,6 +160,7 @@ class MultiImageWrapper(AbstractWrapper):
     """
     def __init__(self, image_wrappers, use_physical_size_scaling=False, **kwargs):
         super().__init__(**kwargs)
+        self._repr = _make_repr(locals())
         self.image_wrappers = image_wrappers
         self.use_physical_size_scaling = use_physical_size_scaling
     
@@ -198,6 +218,7 @@ class OmeTiffWrapper(AbstractWrapper):
     def __init__(self, img_path=None, offsets_path=None, img_url=None, offsets_url=None, name="", transformation_matrix=None, is_bitmask=False,
      **kwargs):
         super().__init__(**kwargs)
+        self._repr = _make_repr(locals())
         self.name = name
         self._img_path = img_path
         self._img_url = img_url
@@ -395,6 +416,7 @@ class AnnDataWrapper(AbstractWrapper):
         :param \\*\\*kwargs: Keyword arguments inherited from :class:`~vitessce.wrappers.AbstractWrapper`
         """
         super().__init__(**kwargs)
+        self._repr = _make_repr(locals())
         self._adata = adata
         self._adata_url = adata_url
         if adata is not None:
@@ -561,6 +583,7 @@ class SnapWrapper(AbstractWrapper):
 
     def __init__(self, in_mtx, in_barcodes_df, in_bins_df, in_clusters_df, starting_resolution=5000, **kwargs):
         super().__init__(**kwargs)
+        self._repr = _make_repr(locals())
         self.in_mtx = in_mtx # scipy.sparse.coo.coo_matrix (filtered_cell_by_bin.mtx)
         self.in_barcodes_df = in_barcodes_df # pandas dataframe (barcodes.txt)
         self.in_bins_df = in_bins_df # pandas dataframe (bins.txt)
