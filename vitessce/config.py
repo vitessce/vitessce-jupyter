@@ -469,7 +469,7 @@ class VitessceConfigView:
     A class to represent a view (i.e. visualization component) in the Vitessce view config layout.
     """
 
-    def __init__(self, component, coordination_scopes, x, y, w, h):
+    def __init__(self, component, coordination_scopes, x, y, w, h, uid=None):
         """
         Not meant to be instantiated directly, but instead created and returned by the ``VitessceConfig.add_view()`` method.
 
@@ -489,6 +489,8 @@ class VitessceConfigView:
             "w": w,
             "h": h
         }
+        if uid is not None:
+            self.view["uid"] = uid
 
     def _to_py_params(self):
         params_dict = {
@@ -496,7 +498,7 @@ class VitessceConfigView:
             "x": self.view["x"],
             "y": self.view["y"],
             "w": self.view["w"],
-            "h": self.view["h"]
+            "h": self.view["h"],
         }
         # Only include coordination_scopes if there are coordination scopes other than
         # the coorindation scope for the 'dataset' coordination type.
@@ -507,6 +509,8 @@ class VitessceConfigView:
         }
         if len(non_dataset_coordination_scopes) > 0:
             params_dict["coordination_scopes"] = non_dataset_coordination_scopes
+        if "uid" in self.view:
+            params_dict["uid"] = self.view["uid"]
         return params_dict
 
     def get_coordination_scope(self, c_type):
@@ -1009,7 +1013,7 @@ class VitessceConfig:
         """
         return self.config["datasets"]
 
-    def add_view(self, view_type, dataset=None, dataset_uid=None, x=0, y=0, w=1, h=1, mapping=None, coordination_scopes=None, props=None):
+    def add_view(self, view_type, dataset=None, dataset_uid=None, x=0, y=0, w=1, h=1, mapping=None, coordination_scopes=None, props=None, uid=None):
         """
         Add a view to the config.
 
@@ -1077,7 +1081,7 @@ class VitessceConfig:
         if coordination_scopes is not None:
             internal_coordination_scopes.update(coordination_scopes)
         vcv = VitessceConfigView(
-            component_str, internal_coordination_scopes, x, y, w, h)
+            component_str, internal_coordination_scopes, x, y, w, h, uid=uid)
 
         # Use the mapping parameter if component is scatterplot and the mapping is not None
         if mapping is not None:
@@ -1737,7 +1741,9 @@ class VitessceConfig:
                 raise ValueError(
                     "Multiple datasets are present, so every view must have an explicit dataset coordination scope.")
             new_view = VitessceConfigView(
-                c['component'], c_coord_scopes, c['x'], c['y'], c['w'], c['h'])
+                c['component'], c_coord_scopes, c['x'], c['y'], c['w'], c['h'],
+                uid=(c["uid"] if "uid" in c else None)
+            )
             if 'props' in c.keys():
                 new_view.set_props(**c['props'])
             vc.config['layout'].append(new_view)

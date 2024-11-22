@@ -204,6 +204,9 @@ async function render(view) {
     const storeUrls = view.model.get('store_urls');
     const invokeTimeout = view.model.get('invoke_timeout');
 
+    const pageMode = view.model.get('page_mode');
+    const pageEsm = view.model.get('page_esm');
+
     const pkgName = (jsDevMode ? "@vitessce/dev" : "vitessce");
 
     importMap.imports["vitessce"] = (customJsUrl.length > 0
@@ -217,8 +220,10 @@ async function render(view) {
         PluginViewType,
         PluginCoordinationType,
         PluginJointFileType,
+        PluginAsyncFunction,
         z,
         useCoordination,
+        usePageModeView,
         useGridItemSize,
         // TODO: names and function signatures are subject to change for the following functions
         // Reference: https://github.com/keller-mark/use-coordination/issues/37#issuecomment-1946226827
@@ -234,6 +239,7 @@ async function render(view) {
     let pluginCoordinationTypes = [];
     let pluginFileTypes = [];
     let pluginJointFileTypes = [];
+    let pluginAsyncFunctions = [];
 
     const stores = Object.fromEntries(
         storeUrls.map(storeUrl => ([
@@ -263,12 +269,13 @@ async function render(view) {
             const pluginModule = (await import(pluginEsmUrl)).default;
             URL.revokeObjectURL(pluginEsmUrl);
 
-            const pluginsObj = await pluginModule.createPlugins({
+            const pluginDeps = {
                 React,
                 PluginFileType,
                 PluginViewType,
                 PluginCoordinationType,
                 PluginJointFileType,
+                PluginAsyncFunction,
                 z,
                 invokeCommand: invokePluginCommand,
                 useCoordination,
@@ -279,7 +286,8 @@ async function render(view) {
                 useComplexCoordinationSecondary,
                 useCoordinationScopes,
                 useCoordinationScopesBy,
-            });
+            };
+            const pluginsObj = await pluginModule.createPlugins(pluginDeps);
             if(Array.isArray(pluginsObj.pluginViewTypes)) {
                 pluginViewTypes = [...pluginViewTypes, ...pluginsObj.pluginViewTypes];
             }
@@ -292,7 +300,28 @@ async function render(view) {
             if(Array.isArray(pluginsObj.pluginJointFileTypes)) {
                 pluginJointFileTypes = [...pluginJointFileTypes, ...pluginsObj.pluginJointFileTypes];
             }
+            if(Array.isArray(pluginsObj.pluginAsyncFunctions)) {
+                pluginAsyncFunctions = [...pluginAsyncFunctions, ...pluginsObj.pluginAsyncFunctions];
+            }
         } catch(e) {
+            console.error("Error loading plugin ESM or executing createPlugins function.");
+            console.error(e);
+        }
+    }
+
+    let PageComponent;
+    if(pageMode && pageEsm.length > 0) {
+        try {
+            const pageEsmUrl = URL.createObjectURL(new Blob([pageEsm], { type: "text/javascript" }));
+            const pageModule = (await import(pageEsmUrl)).default;
+            URL.revokeObjectURL(pageEsmUrl);
+
+            const pageDeps = {
+                usePageModeView,
+            };
+            PageComponent = await pageModule.createPage(pageDeps);
+        } catch(e) {
+            console.error("Error loading page ESM or executing createPage function.")
             console.error(e);
         }
     }
@@ -360,14 +389,17 @@ async function render(view) {
 
         const vitessceProps = {
             height, theme, config, onConfigChange, validateConfig,
-            pluginViewTypes, pluginCoordinationTypes, pluginFileTypes, pluginJointFileTypes,
-            remountOnUidChange, stores,
+            pluginViewTypes, pluginCoordinationTypes,
+            pluginFileTypes,pluginJointFileTypes, pluginAsyncFunctions,
+            remountOnUidChange, stores, pageMode,
         };
 
         return e('div', { ref: divRef, style: { height: height + 'px' } },
             e(React.Suspense, { fallback: e('div', {}, 'Loading...') },
                 e(React.StrictMode, {},
-                    e(Vitessce, vitessceProps)
+                    e(Vitessce, vitessceProps,
+                        (pageMode ? e(PageComponent, {}) : null)
+                    ),
                 ),
             ),
         );
@@ -401,6 +433,7 @@ function createPlugins(utilsForPlugins) {
         PluginViewType,
         PluginCoordinationType,
         PluginJointFileType,
+        PluginAsyncFunction,
         z,
         useCoordination,
         invokeCommand,
@@ -410,9 +443,30 @@ function createPlugins(utilsForPlugins) {
         pluginFileTypes: undefined,
         pluginCoordinationTypes: undefined,
         pluginJointFileTypes: undefined,
+        pluginAsyncFunctions: undefined,
     };
 }
 export default { createPlugins };
+"""
+
+DEFAULT_PAGE_ESM = """
+function createPage(utilsForPage) {
+    const {
+        usePageModeView,
+    } = utilsForPage;
+
+    function PageComponent(props) {
+        const BiomarkerSelect = usePageModeView('biomarker-select');
+
+        return (
+            <div>
+                <BiomarkerSelect />
+            </div>
+        );
+    }
+    return PageComponent;
+}
+export default { createPage };
 """
 
 
@@ -454,16 +508,18 @@ class VitessceWidget(anywidget.AnyWidget):
 
     next_port = DEFAULT_PORT
 
-    js_package_version = Unicode('3.4.14').tag(sync=True)
+    js_package_version = Unicode('3.5.0').tag(sync=True)
     js_dev_mode = Bool(False).tag(sync=True)
     custom_js_url = Unicode('').tag(sync=True)
     plugin_esm = List(trait=Unicode(''), default_value=[]).tag(sync=True)
     remount_on_uid_change = Bool(True).tag(sync=True)
-    invoke_timeout = Int(30000).tag(sync=True)
+    page_mode = Bool(False).tag(sync=True)
+    page_esm = Unicode('').tag(sync=True)
 
     store_urls = List(trait=Unicode(''), default_value=[]).tag(sync=True)
+    invoke_timeout = Int(30000).tag(sync=True)
 
-    def __init__(self, config, height=600, theme='auto', uid=None, port=None, proxy=False, js_package_version='3.4.14', js_dev_mode=False, custom_js_url='', plugins=None, remount_on_uid_change=True, invoke_timeout=30000):
+    def __init__(self, config, height=600, theme='auto', uid=None, port=None, proxy=False, js_package_version='3.5.0', js_dev_mode=False, custom_js_url='', plugins=None, remount_on_uid_change=True, invoke_timeout=30000, page_mode=False, page_esm=None):
         """
         Construct a new Vitessce widget.
 
@@ -476,9 +532,11 @@ class VitessceWidget(anywidget.AnyWidget):
         :param str js_package_version: The version of the NPM package ('vitessce' if not js_dev_mode else '@vitessce/dev').
         :param bool js_dev_mode: Should @vitessce/dev be used (typically for debugging purposes)? By default, False.
         :param str custom_js_url: A URL to a JavaScript file to use (instead of 'vitessce' or '@vitessce/dev' NPM package).
-        :param list[WidgetPlugin] plugins: A list of subclasses of VitesscePlugin. Optional.
+        :param list[VitesscePlugin] plugins: A list of subclasses of VitesscePlugin. Optional.
         :param bool remount_on_uid_change: Passed to the remountOnUidChange prop of the <Vitessce/> React component. By default, True.
         :param int invoke_timeout: The timeout in milliseconds for invoking Python functions from JavaScript. By default, 30000.
+        :param bool page_mode: Whether to render the <Vitessce/> component in grid-mode or page-mode. By default, False.
+        :param str page_esm: The ES module string for the page component creation function. Optional.
 
         .. code-block:: python
             :emphasize-lines: 4
@@ -510,7 +568,9 @@ class VitessceWidget(anywidget.AnyWidget):
         super(VitessceWidget, self).__init__(
             config=config_dict, height=height, theme=theme, proxy=proxy,
             js_package_version=js_package_version, js_dev_mode=js_dev_mode, custom_js_url=custom_js_url,
-            plugin_esm=plugin_esm, remount_on_uid_change=remount_on_uid_change, invoke_timeout=invoke_timeout,
+            plugin_esm=plugin_esm, remount_on_uid_change=remount_on_uid_change,
+            page_mode=page_mode, page_esm=('' if page_esm is None else page_esm),
+            invoke_timeout=invoke_timeout,
             uid=uid_str, store_urls=list(self._stores.keys())
         )
 
@@ -576,7 +636,7 @@ class VitessceWidget(anywidget.AnyWidget):
 # Launch Vitessce using plain HTML representation (no ipywidgets)
 
 
-def ipython_display(config, height=600, theme='auto', base_url=None, host_name=None, uid=None, port=None, proxy=False, js_package_version='3.4.14', js_dev_mode=False, custom_js_url='', plugin_esm=DEFAULT_PLUGIN_ESM, remount_on_uid_change=True):
+def ipython_display(config, height=600, theme='auto', base_url=None, host_name=None, uid=None, port=None, proxy=False, js_package_version='3.5.0', js_dev_mode=False, custom_js_url='', plugin_esm=DEFAULT_PLUGIN_ESM, remount_on_uid_change=True, page_mode=False, page_esm=None):
     from IPython.display import display, HTML
     uid_str = "vitessce" + get_uid_str(uid)
 
@@ -586,12 +646,17 @@ def ipython_display(config, height=600, theme='auto', base_url=None, host_name=N
     routes = config.get_routes()
     serve_routes(config, routes, use_port)
 
+    plugins = plugins or []
+    plugin_esm = [p.plugin_esm for p in plugins]
+
     model_vals = {
         "uid": uid_str,
         "js_package_version": js_package_version,
         "js_dev_mode": js_dev_mode,
         "custom_js_url": custom_js_url,
         "plugin_esm": plugin_esm,
+        "page_mode": page_mode,
+        "page_esm": ('' if page_esm is None else page_esm),
         "remount_on_uid_change": remount_on_uid_change,
         "invoke_timeout": 30000,
         "proxy": proxy,
