@@ -1,0 +1,34 @@
+include: "../common.smk"
+configfile: "config.yml"
+
+# TODO: start from the real raw files
+BASE_URL = "https://s3.embl.de/spatialdata/spatialdata-sandbox/{dataset}.zip"
+
+
+rule all:
+    input:
+        [ (PROCESSED_DIR / f) for f in config['output'] ]
+
+
+# Unzip the downloaded zip files
+rule unzip_file:
+    input:
+        (RAW_DIR / "{dataset}.zip")
+    output:
+        directory(PROCESSED_DIR / "{dataset}.zarr")
+    shell:
+        """
+        unzip {input} -d data/processed &&\
+        mv data/processed/data.zarr data/processed/{wildcards.dataset}.zarr
+        """
+
+# Download visium .zip file containing single-cell data.
+rule download_data:
+    output:
+        (RAW_DIR / "{dataset}.zip")
+    params:
+        file_url=BASE_URL
+    shell:
+        '''
+        curl -L -o {output} {params.file_url}
+        '''

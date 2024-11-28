@@ -1,0 +1,34 @@
+include: "../common.smk"
+configfile: "config.yml"
+
+# TODO: start from the real raw files
+BASE_URL = "https://s3.embl.de/spatialdata/spatialdata-sandbox/visium_associated_xenium_io.zip"
+
+
+rule all:
+    input:
+        [ (PROCESSED_DIR / f) for f in config['output'] ]
+
+
+# Unzip the downloaded zip files
+rule unzip_file:
+    input:
+        os.path.join("data", file_name)
+    output:
+        os.path.join("data", "visium_associated_xenium_io.zip")
+    shell:
+        """
+        mkdir -p {output}\
+        unzip {input} -d {output}\
+        """
+
+# Download visium .zip file containing single-cell data.
+rule download_data:
+    output:
+        (RAW_DIR / "visium_associated_xenium_io.zip")
+    params:
+        file_url=H5AD_URL
+    shell:
+        '''
+        curl -L -o {output} {params.file_url}
+        '''
