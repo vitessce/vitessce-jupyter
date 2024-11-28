@@ -1,0 +1,36 @@
+include: "../common.smk"
+configfile: "config.yml"
+
+# May need to get new URLs from https://cellxgene.cziscience.com/collections/edb893ee-4066-4128-9aec-5eb2b03f8287
+
+# The single-cell lung cancer atlas (LuCA) -- extended atlas
+H5AD_URL = "https://datasets.cellxgene.cziscience.com/3ab47484-a3eb-4f6a-beea-670e1a8fc1e8.h5ad"
+
+rule all:
+    input:
+        [ (PROCESSED_DIR / f) for f in config['output'] ]
+
+rule convert_to_zarr:
+    input:
+        (RAW_DIR / "3ab47484-a3eb-4f6a-beea-670e1a8fc1e8.h5ad")
+    output:
+        directory(PROCESSED_DIR / "sikkema_2023_full.h5ad.zarr")
+    params:
+        script=(SRC_DIR / "convert_to_zarr.py")
+    shell:
+        '''
+        python {params.script} \
+            -i {input} \
+            -o {output}
+        '''
+
+# Download raw h5ad file.
+rule download_adata:
+    output:
+        (RAW_DIR / "3ab47484-a3eb-4f6a-beea-670e1a8fc1e8.h5ad")
+    params:
+        file_url=H5AD_URL
+    shell:
+        '''
+        curl -L --retry 999 --retry-delay 3 -C - -o {output} "{params.file_url}"
+        '''

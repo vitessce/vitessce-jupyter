@@ -1,0 +1,10 @@
+output:
+- toy.zarr
+- visium_hd_3.0.0_io.zarr
+- visium_associated_xenium_io.zarr
+- xenium_rep1_io.zarr
+- xenium_rep2_io.zarr
+- mcmicro_io.zarr
+- merfish.zarr
+- mibitof.zarr
+- steinbock_io.zarr
