@@ -242,12 +242,12 @@ class VitessceConfigDataset:
 
         return artifacts
 
-    def get_stores(self, base_url=None):
+    def get_stores(self, base_url=None, prefer_local=False):
         stores = {}
         for obj in self.objs:
             stores = {
                 **stores,
-                **obj.get_stores(base_url)
+                **obj.get_stores(base_url, prefer_local=prefer_local)
             }
 
         return stores
@@ -1615,7 +1615,7 @@ class VitessceConfig:
             artifacts.update(d.get_artifacts())
         return artifacts
 
-    def get_stores(self, base_url=None):
+    def get_stores(self, base_url=None, prefer_local=False):
         """
         Convert the routes for this view config from the datasets.
 
@@ -1626,7 +1626,7 @@ class VitessceConfig:
         for d in self.config["datasets"]:
             stores = {
                 **stores,
-                **d.get_stores(base_url)
+                **d.get_stores(base_url, prefer_local=prefer_local)
             }
         return stores
 

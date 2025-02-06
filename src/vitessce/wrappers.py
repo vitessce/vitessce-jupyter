@@ -126,8 +126,17 @@ class AbstractWrapper:
         :rtype: dict[str, lamindb.Artifact]
         """
         return self.artifacts
+    
+    def try_getting_artifact_stores(self):
+        artifact_stores = dict()
+        for artifact_url, artifact in self.artifacts.items():
+            local_path = artifact._local_filepath
+            if local_path is not None and os.path.isdir(local_path):
+                store = zarr.DirectoryStore(local_path)
+                artifact_stores[artifact_url] = store
+        return artifact_stores
 
-    def get_stores(self, base_url):
+    def get_stores(self, base_url, prefer_local=False):
         """
         Obtain the stores that have been created for this wrapper class.
 
@@ -139,6 +148,8 @@ class AbstractWrapper:
         for relative_url, store in relative_stores.items():
             absolute_url = base_url + relative_url
             absolute_stores[absolute_url] = store
+        if prefer_local:
+            absolute_stores.update(self.try_getting_artifact_stores())
         return absolute_stores
 
     def get_file_defs(self, base_url):

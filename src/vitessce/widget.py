@@ -472,7 +472,7 @@ class VitessceWidget(anywidget.AnyWidget):
 
     store_urls = List(trait=Unicode(''), default_value=[]).tag(sync=True)
 
-    def __init__(self, config, height=600, theme='auto', uid=None, port=None, proxy=False, js_package_version='3.5.4', js_dev_mode=False, custom_js_url='', plugins=None, remount_on_uid_change=True, invoke_timeout=30000):
+    def __init__(self, config, height=600, theme='auto', uid=None, port=None, proxy=False, js_package_version='3.5.4', js_dev_mode=False, custom_js_url='', plugins=None, remount_on_uid_change=True, prefer_local=True, invoke_timeout=30000):
         """
         Construct a new Vitessce widget.
 
@@ -487,6 +487,7 @@ class VitessceWidget(anywidget.AnyWidget):
         :param str custom_js_url: A URL to a JavaScript file to use (instead of 'vitessce' or '@vitessce/dev' NPM package).
         :param list[WidgetPlugin] plugins: A list of subclasses of VitesscePlugin. Optional.
         :param bool remount_on_uid_change: Passed to the remountOnUidChange prop of the <Vitessce/> React component. By default, True.
+        :param bool prefer_local: Should local data be preferred (only applies to `*_artifact` data objects)? By default, True.
         :param int invoke_timeout: The timeout in milliseconds for invoking Python functions from JavaScript. By default, 30000.
 
         .. code-block:: python
@@ -506,7 +507,7 @@ class VitessceWidget(anywidget.AnyWidget):
         config_dict = config.to_dict(base_url=base_url)
         routes = config.get_routes()
 
-        self._stores = config.get_stores(base_url=base_url)
+        self._stores = config.get_stores(base_url=base_url, prefer_local=prefer_local)
         self._plugins = plugins or []
 
         plugin_esm = [p.plugin_esm for p in self._plugins]
